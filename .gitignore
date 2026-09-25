@@ -1,0 +1,10 @@
+# .NET
+bin/
+obj/
+server/TaskFlow.Api/wwwroot/
+# Node / Angular
+node_modules/
+dist/
+.angular/
+# Secrets
+.env
