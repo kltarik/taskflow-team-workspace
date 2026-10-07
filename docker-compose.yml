@@ -1,0 +1,31 @@
+services:
+  # PostgreSQL for local development and tests. Data survives restarts in the "pgdata" volume.
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-taskflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-taskflow}
+      POSTGRES_DB: taskflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-taskflow}"]
+      interval: 5s
+      retries: 10
+
+  # The whole app in one container (API + built Angular UI). Only starts with: docker compose --profile full up
+  app:
+    profiles: ["full"]
+    build: .
+    environment:
+      ConnectionStrings__Default: Host=db;Port=5432;Database=taskflow;Username=${POSTGRES_USER:-taskflow};Password=${POSTGRES_PASSWORD:-taskflow}
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
