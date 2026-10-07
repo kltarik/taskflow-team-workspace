@@ -57,18 +57,6 @@ Reset the demo data: `docker compose down -v && docker compose up -d db`, then r
 
 Everything in one container: `docker compose --profile full up --build`, then open http://localhost:8080.
 
-### Using a Tailscale exit node on Linux?
-
-With an exit node and LAN access off, Tailscale routes Docker's networks (`172.17.0.0/16`, ...) into the
-tunnel, so published ports accept connections that never reach the container. Allow LAN access:
-
-```bash
-sudo tailscale set --exit-node-allow-lan-access=true
-ip route get 172.17.0.2   # should show "dev docker0", not "dev tailscale0"
-```
-
-Internet traffic still goes through the exit node; only local networks are exempt.
-
 ## Tests
 
 ```bash
