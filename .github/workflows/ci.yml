@@ -1,0 +1,33 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: taskflow
+          POSTGRES_PASSWORD: taskflow
+          POSTGRES_DB: taskflow
+        ports: ["5432:5432"]
+        options: --health-cmd pg_isready --health-interval 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+      - name: API tests (unit + integration against Postgres)
+        run: dotnet test server
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Build the Angular app
+        working-directory: client
+        run: |
+          npm ci
+          npx ng build
