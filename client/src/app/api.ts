@@ -25,6 +25,7 @@ export interface Dashboard { open: number; dueSoon: number; overdue: number; com
 
 export const STATUSES: TaskStatus[] = ['todo', 'in_progress', 'blocked', 'done'];
 export const PRIORITIES: Priority[] = ['low', 'normal', 'high'];
+export const PRIORITY_LABEL: Record<Priority, string> = { low: 'Low', normal: 'Normal', high: 'High' };
 export const STATUS_LABEL: Record<TaskStatus, string> = {
   todo: 'To do', in_progress: 'In progress', blocked: 'Blocked', done: 'Done',
 };

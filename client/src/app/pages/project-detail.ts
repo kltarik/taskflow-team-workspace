@@ -1,69 +1,82 @@
 import { HttpClient, httpResource } from '@angular/common/http';
 import { Component, computed, inject, input, numberAttribute, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import {
-  PRIORITIES, Paged, Priority, ProjectDetail, STATUSES, STATUS_LABEL, Task, TaskStatus, User,
+  PRIORITIES, PRIORITY_LABEL, Paged, Priority, ProjectDetail, STATUSES, STATUS_LABEL, Task, TaskStatus, User,
   dateToUtc, errorMessage,
 } from '../api';
 import { Auth } from '../auth';
-import { StateView, TaskList } from '../ui';
+import { Avatar, StateView, TaskList } from '../ui';
 
 const PAGE_SIZE = 10;
 
 @Component({
   selector: 'app-project-detail',
-  imports: [FormsModule, StateView, TaskList],
+  imports: [FormsModule, RouterLink, Avatar, StateView, TaskList],
   template: `
     <app-state [loading]="project.isLoading()" [error]="project.error()" />
 
     @if (project.hasValue()) {
       @let p = project.value();
-      <h1>{{ p.name }}</h1>
-      <p class="muted">{{ p.description }}</p>
-
-      <ul class="chips" aria-label="Members">
-        @for (m of p.members; track m.userId) {
-          <li class="chip">{{ m.name }} <span class="muted">· {{ m.role }}</span></li>
-        }
-      </ul>
-
-      @if (isManager()) {
-        <form class="row" (ngSubmit)="addMember()">
-          <label for="new-member" class="visually-hidden">Add member</label>
-          <select id="new-member" name="newMember" [(ngModel)]="newMemberId">
-            <option [ngValue]="null">Add a member…</option>
-            @for (u of nonMembers(); track u.id) { <option [ngValue]="u.id">{{ u.name }}</option> }
-          </select>
-          <button type="submit" [disabled]="!newMemberId">Add</button>
-        </form>
-      }
-
-      <div class="row between">
-        <h2>Tasks</h2>
+      <header class="page-head">
+        <div>
+          <p class="crumbs"><a routerLink="/projects">Projects</a></p>
+          <h1>{{ p.name }}</h1>
+          <p class="muted">{{ p.description }}</p>
+        </div>
         @if (isManager()) {
           <button class="primary" type="button" (click)="showForm.set(!showForm())" [attr.aria-expanded]="showForm()">
             Add task
           </button>
         }
-      </div>
+      </header>
+
+      <section class="members" aria-labelledby="members-h">
+        <h2 id="members-h" class="label">Members</h2>
+        <ul class="chips">
+          @for (m of p.members; track m.userId) {
+            <li class="chip"><app-avatar [name]="m.name" />{{ m.name }} <span class="role">{{ m.role }}</span></li>
+          }
+        </ul>
+        @if (isManager() && nonMembers().length) {
+          <form class="add-member" (ngSubmit)="addMember()">
+            <label for="new-member" class="visually-hidden">Add member</label>
+            <select id="new-member" name="newMember" [(ngModel)]="newMemberId">
+              <option [ngValue]="null">Add a member…</option>
+              @for (u of nonMembers(); track u.id) { <option [ngValue]="u.id">{{ u.name }}</option> }
+            </select>
+            <button type="submit" [disabled]="!newMemberId">Add</button>
+          </form>
+        }
+      </section>
 
       @if (showForm()) {
-        <form class="card form" (ngSubmit)="createTask()">
-          <label for="t-title">Title</label>
-          <input id="t-title" name="title" required maxlength="200" [(ngModel)]="draft.title" />
-          <label for="t-assignee">Assignee</label>
-          <select id="t-assignee" name="assignee" [(ngModel)]="draft.assigneeId">
-            <option [ngValue]="null">Unassigned</option>
-            @for (m of p.members; track m.userId) { <option [ngValue]="m.userId">{{ m.name }}</option> }
-          </select>
-          <label for="t-priority">Priority</label>
-          <select id="t-priority" name="priority" [(ngModel)]="draft.priority">
-            @for (pr of priorities; track pr) { <option [value]="pr">{{ pr }}</option> }
-          </select>
-          <label for="t-due">Due date (UTC)</label>
-          <input id="t-due" name="due" type="date" [(ngModel)]="draft.due" />
-          <div class="row">
+        <form class="panel form task-form-new" (ngSubmit)="createTask()">
+          <h2>New task</h2>
+          <div class="field wide">
+            <label for="t-title">Title</label>
+            <input id="t-title" name="title" required maxlength="200" [(ngModel)]="draft.title" />
+          </div>
+          <div class="field">
+            <label for="t-assignee">Assignee</label>
+            <select id="t-assignee" name="assignee" [(ngModel)]="draft.assigneeId">
+              <option [ngValue]="null">Unassigned</option>
+              @for (m of p.members; track m.userId) { <option [ngValue]="m.userId">{{ m.name }}</option> }
+            </select>
+          </div>
+          <div class="field">
+            <label for="t-priority">Priority</label>
+            <select id="t-priority" name="priority" [(ngModel)]="draft.priority">
+              @for (pr of priorities; track pr) { <option [value]="pr">{{ priorityLabel[pr] }}</option> }
+            </select>
+          </div>
+          <div class="field">
+            <label for="t-due">Due date (UTC)</label>
+            <input id="t-due" name="due" type="date" [(ngModel)]="draft.due" />
+          </div>
+          <div class="actions wide">
             <button class="primary" type="submit" [disabled]="busy()">Create task</button>
             <button type="button" (click)="showForm.set(false)">Cancel</button>
           </div>
@@ -72,22 +85,25 @@ const PAGE_SIZE = 10;
 
       @if (message()) { <p class="error" role="alert">{{ message() }}</p> }
 
-      <div class="row filters">
-        <label for="f-status">Status</label>
-        <select id="f-status" [ngModel]="status()" (ngModelChange)="status.set($event); page.set(1)">
-          <option value="">All</option>
-          @for (s of statuses; track s) { <option [value]="s">{{ label[s] }}</option> }
-        </select>
-        <label><input type="checkbox" [ngModel]="mine()" (ngModelChange)="mine.set($event); page.set(1)" /> Only my tasks</label>
+      <div class="section-head">
+        <h2>Tasks</h2>
+        <div class="filters">
+          <label for="f-status">Status</label>
+          <select id="f-status" [ngModel]="status()" (ngModelChange)="status.set($event); page.set(1)">
+            <option value="">All</option>
+            @for (s of statuses; track s) { <option [value]="s">{{ label[s] }}</option> }
+          </select>
+          <label class="check"><input type="checkbox" [ngModel]="mine()" (ngModelChange)="mine.set($event); page.set(1)" /> Only my tasks</label>
+        </div>
       </div>
 
       <app-state [loading]="tasks.isLoading()" [error]="tasks.error()"
                  [empty]="tasks.hasValue() && !tasks.value().items.length" emptyText="No tasks match these filters." />
       @if (tasks.hasValue() && tasks.value().items.length) {
         <app-task-list [tasks]="tasks.value().items" />
-        <nav class="row pager" aria-label="Pages">
+        <nav class="pager" aria-label="Pages">
+          <span class="muted">Page {{ page() }} of {{ pageCount() }}</span>
           <button type="button" (click)="page.set(page() - 1)" [disabled]="page() === 1">Previous</button>
-          <span>Page {{ page() }} of {{ pageCount() }}</span>
           <button type="button" (click)="page.set(page() + 1)" [disabled]="page() >= pageCount()">Next</button>
         </nav>
       }
@@ -124,6 +140,7 @@ export class ProjectDetailPage {
 
   statuses = STATUSES;
   priorities = PRIORITIES;
+  priorityLabel = PRIORITY_LABEL;
   label = STATUS_LABEL;
   showForm = signal(false);
   busy = signal(false);

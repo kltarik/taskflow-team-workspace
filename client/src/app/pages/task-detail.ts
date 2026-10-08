@@ -5,82 +5,116 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import {
-  Comment, PRIORITIES, ProjectDetail, STATUSES, STATUS_LABEL, Task,
+  Comment, PRIORITIES, PRIORITY_LABEL, ProjectDetail, STATUSES, STATUS_LABEL, Task,
   dateToUtc, errorMessage, isOverdue, utcToDate,
 } from '../api';
 import { Auth } from '../auth';
-import { StateView } from '../ui';
+import { Avatar, StateView } from '../ui';
 
 @Component({
   selector: 'app-task-detail',
-  imports: [FormsModule, RouterLink, DatePipe, StateView],
+  imports: [FormsModule, RouterLink, DatePipe, Avatar, StateView],
   template: `
     <app-state [loading]="task.isLoading()" [error]="task.error()" />
 
     @if (task.hasValue()) {
       @let t = task.value();
-      <p><a [routerLink]="['/projects', t.projectId]">← {{ t.projectName }}</a></p>
-      <h1>{{ t.title }}</h1>
-      <p>
-        <span class="badge" [attr.data-status]="t.status">{{ label[t.status] }}</span>
-        @if (overdue(t)) { <span class="badge overdue">Overdue</span> }
-      </p>
+      <header class="page-head">
+        <div>
+          <p class="crumbs"><a [routerLink]="['/projects', t.projectId]">{{ t.projectName }}</a> <span class="num">#{{ t.id }}</span></p>
+          <h1>{{ t.title }}</h1>
+          <p class="meta">
+            <span class="badge" [attr.data-status]="t.status">{{ label[t.status] }}</span>
+            @if (overdue(t)) { <span class="badge overdue">Overdue</span> }
+            <span class="muted">Updated {{ t.updatedAt | date: 'mediumDate' : 'UTC' }}</span>
+          </p>
+        </div>
+      </header>
 
-      @if (form(); as f) {
-        <form class="card form" (ngSubmit)="save()">
-          <!-- Managers may edit everything. The assignee may only change the status. Others read only. -->
-          <label for="title">Title</label>
-          <input id="title" name="title" required maxlength="200" [(ngModel)]="f.title" [disabled]="!canEditAll()" />
+      <div class="task-layout">
+        @if (form(); as f) {
+          <!-- One form, laid out in two columns: text on the left, properties on the right. -->
+          <form class="task-form" (ngSubmit)="save()">
+            <!-- Managers may edit everything. The assignee may only change the status. Others read only. -->
+            <div class="panel task-main">
+              <div class="field">
+                <label for="title">Title</label>
+                <input id="title" name="title" required maxlength="200" [(ngModel)]="f.title" [disabled]="!canEditAll()" />
+              </div>
+              <div class="field">
+                <label for="description">Description</label>
+                <textarea id="description" name="description" rows="5" maxlength="4000" [(ngModel)]="f.description" [disabled]="!canEditAll()"
+                          [placeholder]="canEditAll() ? 'Add details…' : 'No description.'"></textarea>
+              </div>
+            </div>
 
-          <label for="description">Description</label>
-          <textarea id="description" name="description" rows="4" maxlength="4000" [(ngModel)]="f.description" [disabled]="!canEditAll()"></textarea>
+            <div class="panel task-side">
+              <h2 class="label">Details</h2>
+              <div class="field">
+                <label for="assignee">Assignee</label>
+                <select id="assignee" name="assignee" [(ngModel)]="f.assigneeId" [disabled]="!canEditAll()">
+                  <option [ngValue]="null" disabled>Unassigned</option>
+                  @for (m of project.hasValue() ? project.value().members : []; track m.userId) { <option [ngValue]="m.userId">{{ m.name }}</option> }
+                </select>
+              </div>
+              <div class="field">
+                <label for="status">Status</label>
+                <select id="status" name="status" [(ngModel)]="f.status" [disabled]="!canEditStatus()">
+                  @for (s of statuses; track s) { <option [value]="s">{{ label[s] }}</option> }
+                </select>
+              </div>
+              <div class="field">
+                <label for="priority">Priority</label>
+                <select id="priority" name="priority" [(ngModel)]="f.priority" [disabled]="!canEditAll()">
+                  @for (p of priorities; track p) { <option [value]="p">{{ priorityLabel[p] }}</option> }
+                </select>
+              </div>
+              <div class="field">
+                <label for="due">Due date (UTC)</label>
+                <input id="due" name="due" type="date" [(ngModel)]="f.due" [disabled]="!canEditAll()" />
+              </div>
 
-          <label for="assignee">Assignee</label>
-          <select id="assignee" name="assignee" [(ngModel)]="f.assigneeId" [disabled]="!canEditAll()">
-            <option [ngValue]="null" disabled>Unassigned</option>
-            @for (m of project.hasValue() ? project.value().members : []; track m.userId) { <option [ngValue]="m.userId">{{ m.name }}</option> }
-          </select>
+              @if (!canEditAll()) {
+                <p class="hint">{{ canEditStatus() ? 'You are the assignee, so you can change the status.' : 'Read only. Only managers and the assignee can change this task.' }}</p>
+              }
+              @if (message(); as m) { <p [class]="m.ok ? 'success' : 'error'" role="status">{{ m.text }}</p> }
 
-          <label for="status">Status</label>
-          <select id="status" name="status" [(ngModel)]="f.status" [disabled]="!canEditStatus()">
-            @for (s of statuses; track s) { <option [value]="s">{{ label[s] }}</option> }
-          </select>
-
-          <label for="priority">Priority</label>
-          <select id="priority" name="priority" [(ngModel)]="f.priority" [disabled]="!canEditAll()">
-            @for (p of priorities; track p) { <option [value]="p">{{ p }}</option> }
-          </select>
-
-          <label for="due">Due date (UTC)</label>
-          <input id="due" name="due" type="date" [(ngModel)]="f.due" [disabled]="!canEditAll()" />
-
-          @if (message(); as m) { <p [class]="m.ok ? 'success' : 'error'" role="status">{{ m.text }}</p> }
-
-          <div class="row">
-            @if (canEditStatus()) { <button class="primary" type="submit" [disabled]="busy()">Save changes</button> }
-            @if (canEditAll()) { <button class="danger" type="button" (click)="remove()" [disabled]="busy()">Delete task</button> }
-          </div>
-        </form>
-      }
-
-      <h2>Comments</h2>
-      <app-state [loading]="comments.isLoading()" [error]="comments.error()"
-                 [empty]="comments.hasValue() && !comments.value().length" emptyText="No comments yet." />
-      <ol class="timeline">
-        @for (c of comments.hasValue() ? comments.value() : []; track c.id) {
-          <li>
-            <strong>{{ c.authorName }}</strong>
-            <span class="muted"> · {{ c.createdAt | date: 'medium' : 'UTC' }} UTC</span>
-            <p>{{ c.body }}</p>
-          </li>
+              @if (canEditStatus()) {
+                <div class="actions">
+                  <button class="primary" type="submit" [disabled]="busy()">Save changes</button>
+                  @if (canEditAll()) { <button class="danger" type="button" (click)="remove()" [disabled]="busy()">Delete task</button> }
+                </div>
+              }
+            </div>
+          </form>
         }
-      </ol>
-      <form class="form" (ngSubmit)="addComment()">
-        <label for="comment">Add a comment</label>
-        <textarea id="comment" name="comment" rows="3" maxlength="2000" [(ngModel)]="newComment"></textarea>
-        @if (commentError()) { <p class="error" role="alert">{{ commentError() }}</p> }
-        <button type="submit" [disabled]="!newComment.trim()">Post comment</button>
-      </form>
+
+        <section class="comments" aria-labelledby="comments-h">
+          <h2 id="comments-h">Comments</h2>
+          <app-state [loading]="comments.isLoading()" [error]="comments.error()"
+                     [empty]="comments.hasValue() && !comments.value().length" emptyText="No comments yet." />
+          <ol class="timeline">
+            @for (c of comments.hasValue() ? comments.value() : []; track c.id) {
+              <li>
+                <app-avatar [name]="c.authorName" />
+                <div>
+                  <p class="comment-head"><strong>{{ c.authorName }}</strong>
+                    <span class="muted">{{ c.createdAt | date: 'MMM d, HH:mm' : 'UTC' }} UTC</span></p>
+                  <p class="comment-body">{{ c.body }}</p>
+                </div>
+              </li>
+            }
+          </ol>
+          <form class="composer" (ngSubmit)="addComment()">
+            <label for="comment">Add a comment</label>
+            <textarea id="comment" name="comment" rows="3" maxlength="2000" [(ngModel)]="newComment" placeholder="Write a comment…"></textarea>
+            @if (commentError()) { <p class="error" role="alert">{{ commentError() }}</p> }
+            <div class="actions">
+              <button type="submit" [disabled]="!newComment.trim()">Post comment</button>
+            </div>
+          </form>
+        </section>
+      </div>
     }
   `,
 })
@@ -112,6 +146,7 @@ export class TaskDetailPage {
 
   statuses = STATUSES;
   priorities = PRIORITIES;
+  priorityLabel = PRIORITY_LABEL;
   label = STATUS_LABEL;
   overdue = isOverdue;
   busy = signal(false);

@@ -38,7 +38,7 @@ describe('LoginPage', () => {
   });
 
   it('shows the API message when the login is rejected', async () => {
-    await click('Demo member (Sam)');
+    await click('Sam Rivera');
     backend.expectOne('/api/auth/login')
       .flush({ detail: 'Invalid email or password.' }, { status: 401, statusText: 'Unauthorized' });
     await settle();
@@ -46,7 +46,7 @@ describe('LoginPage', () => {
   });
 
   it('demo button signs in and goes to the dashboard', async () => {
-    await click('Demo manager (Maya)');
+    await click('Maya Patel');
     const req = backend.expectOne('/api/auth/login');
     expect(req.request.body).toEqual({ email: 'maya@taskflow.demo', password: 'Demo123!' });
     req.flush({ id: 2, name: 'Maya Patel', email: 'maya@taskflow.demo', demoRole: 'manager' });

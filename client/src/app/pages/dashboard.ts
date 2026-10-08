@@ -15,20 +15,25 @@ const CARDS = [
   selector: 'app-dashboard',
   imports: [RouterLink, StateView, TaskList],
   template: `
-    <h1>Dashboard</h1>
+    <header class="page-head">
+      <div>
+        <h1>Dashboard</h1>
+        <p class="muted">Work across every project you belong to.</p>
+      </div>
+    </header>
 
-    <div class="stats">
+    <nav class="stats" aria-label="Task summary">
       @for (c of cards; track c.bucket) {
         <!-- Each card is a link that filters the list below via ?bucket= -->
-        <a class="card stat" [routerLink]="[]" [queryParams]="{ bucket: c.bucket }"
+        <a class="stat" [routerLink]="[]" [queryParams]="{ bucket: c.bucket }" [attr.data-bucket]="c.bucket"
            [attr.aria-current]="bucket() === c.bucket ? 'true' : null">
+          <span class="stat-label">{{ c.label }}</span>
           <span class="stat-num">{{ summary.hasValue() ? summary.value()[c.key] : '–' }}</span>
-          <span>{{ c.label }}</span>
         </a>
       }
-    </div>
+    </nav>
 
-    <div class="row between">
+    <div class="section-head">
       <h2>{{ title() }}</h2>
       @if (bucket()) { <a routerLink="/">Show recent</a> }
     </div>

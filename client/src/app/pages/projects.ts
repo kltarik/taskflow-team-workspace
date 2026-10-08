@@ -10,43 +10,59 @@ import { StateView } from '../ui';
   selector: 'app-projects',
   imports: [FormsModule, RouterLink, StateView],
   template: `
-    <div class="row between">
-      <h1>Projects</h1>
+    <header class="page-head">
+      <div>
+        <h1>Projects</h1>
+        <p class="muted">Projects you are a member of.</p>
+      </div>
       <button class="primary" type="button" (click)="showForm.set(!showForm())" [attr.aria-expanded]="showForm()">
         New project
       </button>
-    </div>
+    </header>
 
     @if (showForm()) {
-      <form class="card form" (ngSubmit)="create()">
-        <label for="p-name">Name</label>
-        <input id="p-name" name="name" required maxlength="100" [(ngModel)]="name" />
-        <label for="p-desc">Description</label>
-        <textarea id="p-desc" name="description" maxlength="1000" rows="3" [(ngModel)]="description"></textarea>
+      <form class="panel form" (ngSubmit)="create()">
+        <div class="field">
+          <label for="p-name">Name</label>
+          <input id="p-name" name="name" required maxlength="100" [(ngModel)]="name" />
+        </div>
+        <div class="field">
+          <label for="p-desc">Description <span class="muted">(optional)</span></label>
+          <textarea id="p-desc" name="description" maxlength="1000" rows="3" [(ngModel)]="description"></textarea>
+        </div>
         @if (formError()) { <p class="error" role="alert">{{ formError() }}</p> }
-        <div class="row">
+        <div class="actions">
           <button class="primary" type="submit" [disabled]="busy()">Create project</button>
           <button type="button" (click)="showForm.set(false)">Cancel</button>
         </div>
       </form>
     }
 
-    <label for="search" class="visually-hidden">Search projects</label>
-    <input id="search" type="search" placeholder="Search projects…" [ngModel]="search()" (ngModelChange)="search.set($event)" />
+    <div class="toolbar">
+      <label for="search" class="visually-hidden">Search projects</label>
+      <input id="search" class="search" type="search" placeholder="Search projects…" [ngModel]="search()" (ngModelChange)="search.set($event)" />
+    </div>
 
     <app-state [loading]="projects.isLoading()" [error]="projects.error()"
                [empty]="projects.hasValue() && !filtered().length" emptyText="No projects found." />
 
-    <ul class="project-list">
-      @for (p of filtered(); track p.id) {
-        <li class="card">
-          <h2><a [routerLink]="['/projects', p.id]">{{ p.name }}</a></h2>
-          <p class="muted">{{ p.description }}</p>
-          <p>{{ p.memberCount }} members · {{ p.doneCount }}/{{ p.taskCount }} tasks done</p>
-          <progress [value]="p.doneCount" [max]="p.taskCount || 1" [attr.aria-label]="p.name + ' progress'"></progress>
-        </li>
-      }
-    </ul>
+    @if (filtered().length) {
+      <ul class="project-list">
+        @for (p of filtered(); track p.id) {
+          <li>
+            <div class="project-main">
+              <h2><a [routerLink]="['/projects', p.id]">{{ p.name }}</a></h2>
+              <p class="muted">{{ p.description }}</p>
+            </div>
+            <p class="project-meta muted">{{ p.memberCount }} {{ p.memberCount === 1 ? 'member' : 'members' }}</p>
+            <div class="project-progress">
+              <span class="num">{{ p.doneCount }}/{{ p.taskCount }} done</span>
+              <progress [value]="p.doneCount" [max]="p.taskCount || 1" [attr.aria-label]="p.name + ' progress'"></progress>
+            </div>
+          </li>
+        }
+      </ul>
+    }
   `,
 })
 export class ProjectsPage {
