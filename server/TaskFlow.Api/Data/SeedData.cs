@@ -8,13 +8,24 @@ public static class SeedData
 {
     public const string DemoPassword = "Demo123!";
 
+    // Wipes all demo content and seeds it again. Users are kept, so their ids stay the same
+    // and anyone who is signed in stays signed in as the same person.
+    public static async Task ResetAsync(AppDb db)
+    {
+        await db.Database.ExecuteSqlRawAsync(
+            "TRUNCATE comments, task_items, project_members, projects RESTART IDENTITY");
+        await RunAsync(db);
+    }
+
     public static async Task RunAsync(AppDb db)
     {
-        if (await db.Users.AnyAsync()) return; //already seeded
+        if (await db.Projects.AnyAsync()) return; //already seeded
 
         var hasher = new PasswordHasher<User>();
+        var existing = await db.Users.ToDictionaryAsync(u => u.Email);
         User NewUser(string name, string email)
         {
+            if (existing.TryGetValue(email, out var found)) return found;
             var u = new User {Name = name, Email = email};
             u.PasswordHash = hasher.HashPassword(u, DemoPassword);
 

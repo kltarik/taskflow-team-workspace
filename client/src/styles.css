@@ -49,6 +49,10 @@ a { color: var(--accent); }
 .topbar nav { display: flex; gap: var(--s2); flex: 1; }
 .topbar nav a { text-decoration: none; color: var(--text); padding: var(--s1) 0; }
 .topbar nav a.active { color: var(--accent); font-weight: 600; border-bottom: 2px solid var(--accent); }
+.demo-banner {
+  margin: 0; padding: var(--s1) var(--s2); text-align: center;
+  background: #fff8e6; border-bottom: 1px solid #f0d9a0; font-size: 0.9rem;
+}
 .brand { font-weight: 700; text-decoration: none; color: var(--text); }
 .who { color: var(--muted); }
 

@@ -20,6 +20,7 @@ export interface Task {
 }
 export interface Paged<T> { items: T[]; page: number; pageSize: number; total: number; }
 export interface Comment { id: number; authorId: number; authorName: string; body: string; createdAt: string; }
+export interface DemoInfo { resetMinutes: number; nextResetAt: string | null; }
 export interface Dashboard { open: number; dueSoon: number; overdue: number; completedThisMonth: number; tasks: Task[]; }
 
 export const STATUSES: TaskStatus[] = ['todo', 'in_progress', 'blocked', 'done'];

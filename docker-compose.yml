@@ -20,6 +20,7 @@ services:
     profiles: ["full"]
     build: .
     environment:
+      Demo__ResetMinutes: ${DEMO_RESET_MINUTES:-0}
       ConnectionStrings__Default: Host=db;Port=5432;Database=taskflow;Username=${POSTGRES_USER:-taskflow};Password=${POSTGRES_PASSWORD:-taskflow}
     ports:
       - "8080:8080"
