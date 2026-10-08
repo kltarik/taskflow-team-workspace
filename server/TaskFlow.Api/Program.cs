@@ -1,7 +1,9 @@
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
+using TaskFlow.Api;
 using TaskFlow.Api.Data;
 using TaskFlow.Api.Endpoints;
 
@@ -39,6 +41,17 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         o.Events.OnRedirectToAccessDenied = ctx => { ctx.Response.StatusCode = 403; return Task.CompletedTask; };
     });
 builder.Services.AddAuthorization();
+
+// The auth cookie is encrypted with these keys. Keeping them in Postgres (not in memory or the
+// container's disk) means restarts and redeploys don't sign everyone out.
+// ponytail: keys are stored unencrypted in the database; add ProtectKeysWith* if the DB isn't trusted.
+builder.Services.AddDataProtection()
+    .SetApplicationName("TaskFlow")
+    .PersistKeysToDbContext<AppDb>();
+
+// Optional periodic reset of the demo data (Demo:ResetMinutes, 0 = off).
+builder.Services.AddSingleton<DemoReset>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<DemoReset>());
 
 // Slow down password guessing: 10 login attempts per minute per IP address.
 builder.Services.AddRateLimiter(o =>
@@ -80,6 +93,7 @@ api.MapAuthEndpoints();                                 // ...except /api/auth/l
 api.MapProjectEndpoints();
 api.MapTaskEndpoints();
 api.MapDashboardEndpoints();
+api.MapDemoEndpoints();
 
 // In production the built Angular app is copied into wwwroot and served from here (same origin, no CORS).
 app.UseDefaultFiles();
