@@ -27,4 +27,5 @@ Sign in · Dashboard · Projects · Project detail · Task detail · Settings
 - Auth: HttpOnly, SameSite=Strict session cookie (not a token in localStorage). 8 h sliding expiry.
 - Non-members get 404 instead of 403 so project ids can't be probed.
 - Dates stored in UTC and displayed in UTC; a due date means "end of that day, UTC".
-- Demo reset: `docker compose down -v && docker compose up -d db`, then start the API (it re-seeds an empty database).
+- Demo reset: set `Demo__ResetMinutes` (e.g. 60) and the API wipes projects, tasks and comments on that interval and re-seeds them. Users are kept, so signed-in visitors stay signed in. A banner tells visitors when the next reset is. Locally: `docker compose down -v` for a full reset.
+- Session keys (data protection) are stored in Postgres, so API restarts and redeploys don't sign users out.

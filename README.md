@@ -55,18 +55,27 @@ cd client && npm ci && npx ng serve      # UI on http://localhost:4200 (proxies 
 
 Reset the demo data: `docker compose down -v && docker compose up -d db`, then restart the API.
 
+Public demo mode: set `DEMO_RESET_MINUTES=60` in `.env` (or `Demo__ResetMinutes=60` on your host). Every 60 minutes
+the API wipes projects, tasks and comments and re-seeds them; demo users stay signed in. A banner shows the next reset.
+
 Everything in one container: `docker compose --profile full up --build`, then open http://localhost:8080.
 
 ## Tests
 
 ```bash
-dotnet test server     # needs the db container running; uses a separate taskflow_test database
+dotnet test server               # needs the db container running; uses a separate taskflow_test database
+cd client && npx ng test         # Angular unit tests (Vitest)
 ```
 
-6 unit tests for the role rules and 10 integration tests that go through HTTP, auth and EF Core
+API: 6 unit tests for the role rules and 13 integration tests that go through HTTP, auth and EF Core
 into a real PostgreSQL database: manager can assign, member gets 403 when reassigning,
-non-member gets 404, invalid status gets 400, status persists, dashboard counts match the seed.
-GitHub Actions runs them on every push (`.github/workflows/ci.yml`).
+non-member gets 404, invalid status gets 400, status persists, dashboard counts match the seed,
+sessions survive an API restart, and the demo reset restores the seed without signing anyone out.
+
+Client: 22 unit tests for the auth guard and 401 handling, the login page, the task table
+(overdue shown as text) and the error/date helpers.
+
+GitHub Actions runs both on every push (`.github/workflows/ci.yml`).
 
 ## Trade-offs and next steps
 
@@ -75,4 +84,6 @@ GitHub Actions runs them on every push (`.github/workflows/ci.yml`).
 - **UTC everywhere.** Stored and displayed in UTC; a due date means the end of that day UTC.
 - **PATCH can't clear fields:** null means "unchanged", so an assignee or due date can't be removed once set.
 - **"Completed this month" uses `updated_at`** because the schema has no `completed_at`.
-- Next: frontend unit tests, a read-only/periodic-reset public demo, persistent data-protection keys so restarts don't sign users out.
+- **Session keys in Postgres.** The cookie-encryption keys are stored in the database so restarts and redeploys keep users signed in. They're stored unencrypted; protecting them with a certificate is the next step if the database isn't trusted.
+- **Periodic reset over read-only mode** for the public demo: visitors can try every feature, and vandalism lasts at most one interval.
+- Next: end-to-end browser tests in CI, a `completed_at` column, and explicit "clear" for assignee and due date.

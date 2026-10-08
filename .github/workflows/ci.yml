@@ -26,8 +26,9 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 22
-      - name: Build the Angular app
+      - name: Angular unit tests and build
         working-directory: client
         run: |
           npm ci
+          npx ng test --watch=false
           npx ng build
