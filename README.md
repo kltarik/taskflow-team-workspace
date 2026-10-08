@@ -14,6 +14,8 @@ Managers plan projects and assign work; members update their own tasks and comme
 
 The sign-in page has one-click buttons for both. All data is fictional seed data.
 
+<img src="docs/screenshots/login.png" alt="Sign-in page with the two demo account buttons">
+
 ## Features and roles
 
 | | Manager | Member |
@@ -25,8 +27,15 @@ The sign-in page has one-click buttons for both. All data is fictional seed data
 
 - Dashboard: open / due in 7 days / overdue / completed this month; each card filters the list.
 - Project view: member chips, status and "only my tasks" filters, pagination, sorted by due date then priority.
-- Task view: field-level editing by role, comment timeline, delete with confirmation.
-- Mobile: the task table becomes stacked cards. Overdue is shown as text, not color alone.
+- Task view: field-level editing by role, comment timeline, delete with confirmation. Fields you can't edit read as plain text, with a note explaining why.
+- Mobile: the sidebar becomes a top bar and the task table becomes stacked cards. Overdue is shown as text, not color alone.
+- Interface: a restrained B2B look built with plain CSS and design tokens (`client/src/styles.css`), with no UI library. Status labels pair a color with text, priority shows as bars plus a word, and people get initials avatars.
+
+<p>
+  <img src="docs/screenshots/project.png" alt="Project page: member chips, filters and the task table" width="49%">
+  <img src="docs/screenshots/task-detail.png" alt="Task page: editable fields, details panel and comments" width="49%">
+</p>
+<p><img src="docs/screenshots/mobile.png" alt="Dashboard on a phone, with tasks shown as cards" width="260"></p>
 
 ## Architecture
 
